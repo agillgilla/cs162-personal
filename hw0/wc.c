@@ -6,7 +6,11 @@
 
 int main(int argc, char *argv[]) {
 
-	int wc = 0;
+	int lines = 0;
+
+	int words = 0;
+
+	int chars = 0;
     
     if (argc == 1) { // No file arg passed to wc (use stdin)
 
@@ -15,16 +19,20 @@ int main(int argc, char *argv[]) {
 		while (read(STDIN_FILENO, &ch, 1) > 0) {
 			if (isspace(ch)) { // Current character is whitespace
 				if (iter_word) { // Currently iterating through word
-					wc++;
+					words++;
+				}
+				if (ch == '\n') { // Current character is newline
+					lines++;
 				}
 				iter_word = false;
 			} else { // Current character is not whitespace
 				iter_word = true;
 			}
+			chars++;
 		}
 
 		if (iter_word) {
-			wc++;
+			words++;
 		}
 
     } else if (argc == 2) { // Filename arg passed to wc 
@@ -37,16 +45,20 @@ int main(int argc, char *argv[]) {
 		while((ch = getc(file)) != EOF) {
       		if (isspace(ch)) { // Current character is whitespace
 				if (iter_word) { // Currently iterating through word
-					wc++;
+					words++;
+				}
+				if (ch == '\n') { // Current character is newline
+					lines++;
 				}
 				iter_word = false;
 			} else { // Current character is not whitespace
 				iter_word = true;
 			}
+			chars++;
     	}
 
     	if (iter_word) {
-			wc++;
+			words++;
 		}
 
     } else { // More than 1 arg passed to wc (error)
@@ -54,6 +66,7 @@ int main(int argc, char *argv[]) {
     	return 1;
     }
 
-    printf("%d", wc);
+    printf("%d\t%d\t%d\n", lines, words, chars);
+
     return 0;
 }
