@@ -1,0 +1,12 @@
+The address of main and recur are in objdump, as well as the address of the static data.
+
+.text is an ipmortant segment (it stores all the code.) .data and .bss are important segments used
+for dynamic allocation.
+
+The stack is growing down.
+
+The stack frame is 48 bytes on each recursive call
+
+The base heap address is 0x121e010.  It is growing up.
+
+There appear to be 12 bytes of padding between the two heap allocations (they aren't contiguous.)

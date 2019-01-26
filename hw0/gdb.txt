@@ -1,0 +1,43 @@
+argv: (char **) 0x7fffffffe678
+
+argv[0]: 0x7fffffffe88f "/home/vagrant/code/personal/hw0/wc"
+
+Symbol "main" is a function at address 0x40067d.
+
+info stack: #0  main (argc=1, argv=0x7fffffffe678) at wc.c:9
+(Shows the name of the function of current stack frame and local variables.)
+
+info frame: Stack level 0, frame at 0x7fffffffe5a0:
+ rip = 0x40068c in main (wc.c:9); saved rip = 0x7ffff7a32f45
+ source language c.
+ Arglist at 0x7fffffffe590, args: argc=1, argv=0x7fffffffe678
+ Locals at 0x7fffffffe590, Previous frame's sp is 0x7fffffffe5a0
+ Saved registers:
+  rbp at 0x7fffffffe590, rip at 0x7fffffffe598
+(Shows stack pointers and register values of the current stack frame.)
+
+info registers: rax            0x40067d 4195965
+rbx            0x0      0
+rcx            0x0      0
+rdx            0x7fffffffe688   140737488348808
+rsi            0x7fffffffe678   140737488348792
+rdi            0x1      1
+rbp            0x7fffffffe590   0x7fffffffe590
+rsp            0x7fffffffe560   0x7fffffffe560
+r8             0x7ffff7dd4e80   140737351863936
+r9             0x7ffff7dea600   140737351951872
+r10            0x7fffffffe420   140737488348192
+r11            0x7ffff7a32e50   140737348054608
+r12            0x400590 4195728
+r13            0x7fffffffe670   140737488348784
+r14            0x0      0
+r15            0x0      0
+rip            0x40068c 0x40068c <main+15>
+eflags         0x206    [ PF IF ]
+cs             0x33     51
+ss             0x2b     43
+ds             0x0      0
+es             0x0      0
+fs             0x0      0
+gs             0x0      0
+(Prints out the values of all the currently used registers.)
