@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     	char ch;
     	bool iter_word = false;
 		while (read(STDIN_FILENO, &ch, 1) > 0) {
-			if (isspace(ch)) { // Current character is whitespace
+			if (isspace(ch) || ch == '\0') { // Current character is whitespace
 				if (iter_word) { // Currently iterating through word
 					words++;
 				}
@@ -43,7 +43,8 @@ int main(int argc, char *argv[]) {
 		char ch;
     	bool iter_word = false;
 		while((ch = getc(file)) != EOF) {
-      		if (isspace(ch)) { // Current character is whitespace
+      		if (isspace(ch) || ch == '\0') { // Current character is whitespace
+      			printf("%s\n", "found space");
 				if (iter_word) { // Currently iterating through word
 					words++;
 				}
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]) {
 				}
 				iter_word = false;
 			} else { // Current character is not whitespace
+				printf("%s\n", "found non-space");
 				iter_word = true;
 			}
 			chars++;
