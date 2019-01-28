@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
     	char ch;
     	bool iter_word = false;
-		while (read(STDIN_FILENO, &ch, 1) > 0) {
+		while ((ch = getc(stdin)) != EOF) {
 			if (isspace(ch)) { // Current character is whitespace
 				if (iter_word) { // Currently iterating through word
 					words++;
