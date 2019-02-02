@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <pwd.h>
 #include <stdbool.h>
@@ -158,14 +159,34 @@ int main(unused int argc, unused char *argv[]) {
     } else {
       
       char *filename = tokens_get_token(tokens, 0);
+
+      bool redirect_out = false;
+      char *out_filename;
+      int outfd = -1;
+      int out_char_index = -1;
+
+      for (int i = 0; i < tokens_get_length(tokens); i++) {
+        if (strcmp(">", tokens_get_token(tokens, i)) == 0) {
+          redirect_out = true;
+          out_char_index = i;
+          if (i < tokens_get_length(tokens) - 1) {
+            out_filename = tokens_get_token(tokens, i + 1);
+            outfd = open(out_filename, O_CREAT|O_WRONLY|O_TRUNC, 0644);
+          }
+        }
+      }
+
+    
       char *full_file_path = NULL;
       char *path = getenv("PATH");
+
+      char *path_copy = malloc(strlen(path) + 1); 
+      strcpy(path_copy, path);
 
       char *contains_slash = strchr(filename, '/');
 
       if (contains_slash == NULL) { /* Only check $PATH if no slash in filename */
-
-        char *path_split = strtok(path, ":");
+        char *path_split = strtok(path_copy, ":");
 
         /* Iterate through all dirs in $PATH */
         while (path_split != NULL) {
@@ -177,42 +198,70 @@ int main(unused int argc, unused char *argv[]) {
           strcpy(full_path, path_split);
           strcat(full_path, "/");
           strcat(full_path, filename);
-
           if (access(full_path, F_OK) != -1) {
             /* File exists, break from loop and execute */
             full_file_path = full_path;
             break;
           }
-          path_split = strtok (NULL, ":");
+          path_split = strtok(NULL, ":");
         }
       }
+
+      free(path_copy);
 
       if (full_file_path == NULL) {
         full_file_path = filename;
-        if (access(full_file_path, F_OK) == -1) {
-          /* File doesn't exist and isn't in $PATH */
-          printf("%s: No such file or directory\n", full_file_path);
-        }
       }
 
-      /* Spawn a child to run the program */
-      pid_t pid = fork();
-      if (pid == 0) { /* child process */
-        size_t argc = tokens_get_length(tokens);
-        char *argv[argc + 1];
 
-        for (int i = 0; i < argc; i++) {
-          argv[i] = tokens_get_token(tokens, i);
-        }
+      if (access(full_file_path, F_OK) == -1) {
+        /* Executable doesn't exist and isn't in $PATH */
+        printf("%s: No such file or directory\n", full_file_path);
+      } else {
+        /* Spawn a child to run the program */
+        pid_t pid = fork();
+        if (pid == 0) { /* child process */
+
+          size_t argc;
         
-        argv[argc] = (char *) NULL;
+          if (redirect_out) {
+            argc = out_char_index;
+          } else {
+            argc = tokens_get_length(tokens);
+            
+          }
 
-        execv(full_file_path, argv);
-        /* If execv fails it will get here */
+          char *argv[argc + 1];
 
-      } else { /* parent process */
-        waitpid(pid, 0, 0); /* wait for child to exit */
-      }
+          for (int i = 0; i < argc; i++) {
+            argv[i] = tokens_get_token(tokens, i);
+          }
+          
+          argv[argc] = (char *) NULL;
+
+          if (redirect_out) {
+            /* Replace stdout */
+            if (!outfd) {
+              printf("Error opening output file: %s\n", out_filename);
+            } else {
+              dup2(outfd, 1); 
+              close(outfd);
+            }
+          }
+
+          execv(full_file_path, argv);
+          /* If execv fails it will get here */
+
+        } else if (pid < 0) {
+          printf("Error on creating new process: %s\n", full_file_path);
+          if (outfd) {
+            close(outfd);
+          }
+        } else { /* parent process */
+          close(outfd);
+          waitpid(pid, 0, 0); /* wait for child to exit */
+        }
+      }      
     }
 
     if (shell_is_interactive)
