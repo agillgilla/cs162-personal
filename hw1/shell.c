@@ -267,7 +267,7 @@ int main(unused int argc, unused char *argv[]) {
             if (!infd) {
               printf("Error opening input file: %s\n", in_filename);
             } else {
-              dup2(outfd, STDIN_FILENO); 
+              dup2(infd, STDIN_FILENO); 
               close(infd);
             }
           }
@@ -280,8 +280,16 @@ int main(unused int argc, unused char *argv[]) {
           if (outfd) {
             close(outfd);
           }
+          if (infd) {
+            close(infd);
+          }
         } else { /* parent process */
-          close(outfd);
+          if (outfd) {
+            close(outfd);
+          }
+          if (infd) {
+            close(infd);
+          }
           waitpid(pid, 0, 0); /* wait for child to exit */
         }
       }      
