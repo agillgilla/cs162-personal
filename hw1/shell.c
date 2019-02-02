@@ -156,7 +156,45 @@ int main(unused int argc, unused char *argv[]) {
     if (fundex >= 0) {
       cmd_table[fundex].fun(tokens);
     } else {
-      /* REPLACE this to run commands as programs. */
+      
+      char *filename = tokens_get_token(tokens, 0);
+      char *full_file_path = NULL;
+      char *path = getenv("PATH");
+
+      char *contains_slash = strchr(filename, '/');
+
+      if (contains_slash == NULL) { /* Only check $PATH if no slash in filename */
+
+        char *path_split = strtok(path, ":");
+
+        /* Iterate through all dirs in $PATH */
+        while (path_split != NULL) {
+          /* malloc +2 (1 for slash between path and filename and 1 for null terminator) */
+          char *full_path = malloc(strlen(path_split) + strlen(filename) + 2); 
+          if (full_path == NULL) {
+            printf("Error on memory allocation for path resolutions\n");
+          }
+          strcpy(full_path, path_split);
+          strcat(full_path, "/");
+          strcat(full_path, filename);
+
+          if (access(full_path, F_OK) != -1) {
+            /* File exists, break from loop and execute */
+            full_file_path = full_path;
+            break;
+          }
+          path_split = strtok (NULL, ":");
+        }
+      }
+
+      if (full_file_path == NULL) {
+        full_file_path = filename;
+        if (access(full_file_path, F_OK) == -1) {
+          /* File doesn't exist and isn't in $PATH */
+          printf("%s: No such file or directory\n", full_file_path);
+        }
+      }
+
       /* Spawn a child to run the program */
       pid_t pid = fork();
       if (pid == 0) { /* child process */
@@ -169,13 +207,12 @@ int main(unused int argc, unused char *argv[]) {
         
         argv[argc] = (char *) NULL;
 
-        execv(tokens_get_token(tokens, 0), argv);
-        exit(127); /* only if execv fails */
-        
+        execv(full_file_path, argv);
+        /* If execv fails it will get here */
+
       } else { /* parent process */
         waitpid(pid, 0, 0); /* wait for child to exit */
       }
-      return 0;
     }
 
     if (shell_is_interactive)
