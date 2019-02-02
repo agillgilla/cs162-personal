@@ -1,5 +1,8 @@
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
+#include <limits.h>
+#include <pwd.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +32,8 @@ pid_t shell_pgid;
 
 int cmd_exit(struct tokens *tokens);
 int cmd_help(struct tokens *tokens);
+int cmd_pwd(struct tokens *tokens);
+int cmd_cd(struct tokens *tokens);
 
 /* Built-in command functions take token array (see parse.h) and return int */
 typedef int cmd_fun_t(struct tokens *tokens);
@@ -43,6 +48,8 @@ typedef struct fun_desc {
 fun_desc_t cmd_table[] = {
   {cmd_help, "?", "show this help menu"},
   {cmd_exit, "exit", "exit the command shell"},
+  {cmd_pwd, "pwd", "print the current working directory"},
+  {cmd_cd, "cd", "change the current working directory"},
 };
 
 /* Prints a helpful description for the given command */
@@ -55,6 +62,44 @@ int cmd_help(unused struct tokens *tokens) {
 /* Exits this shell */
 int cmd_exit(unused struct tokens *tokens) {
   exit(0);
+}
+
+/* Prints the current working directory */
+int cmd_pwd(unused struct tokens *tokens) {
+  /* Get the current working directory of the shell */
+  char cwd[PATH_MAX];
+  getcwd(cwd, sizeof(cwd));
+  printf("%s\n", cwd);
+  return 0;
+}
+
+/* Changes the directory to specified argument */
+int cmd_cd(struct tokens *tokens) {
+  if (tokens_get_length(tokens) > 1) {
+    char *dirStr = tokens_get_token(tokens, 1);
+
+    DIR* dir = opendir(dirStr);
+    if (dir) {
+      /* Directory exists. */
+      closedir(dir);
+      chdir(dirStr);
+      return 0;
+    }
+    else if (ENOENT == errno) {
+      /* Directory does not exist. */
+      printf("cd: %s: No such file or directory\n", dirStr);
+      return -1;
+    } else {
+      printf("Unknown error changing to directory: %s\n", dirStr);
+      return -1;
+    }
+  } else {
+    /* No args.  cd to home directory */
+    struct passwd *pw = getpwuid(getuid());
+    const char *homedir = pw->pw_dir;
+    chdir(homedir);
+    return 0;
+  }
 }
 
 /* Looks up the built-in command, if it exists. */
@@ -112,7 +157,25 @@ int main(unused int argc, unused char *argv[]) {
       cmd_table[fundex].fun(tokens);
     } else {
       /* REPLACE this to run commands as programs. */
-      fprintf(stdout, "This shell doesn't know how to run programs.\n");
+      /* Spawn a child to run the program */
+      pid_t pid = fork();
+      if (pid == 0) { /* child process */
+        size_t argc = tokens_get_length(tokens);
+        char *argv[argc + 1];
+
+        for (int i = 0; i < argc; i++) {
+          argv[i] = tokens_get_token(tokens, i);
+        }
+        
+        argv[argc] = (char *) NULL;
+
+        execv(tokens_get_token(tokens, 0), argv);
+        exit(127); /* only if execv fails */
+        
+      } else { /* parent process */
+        waitpid(pid, 0, 0); /* wait for child to exit */
+      }
+      return 0;
     }
 
     if (shell_is_interactive)
