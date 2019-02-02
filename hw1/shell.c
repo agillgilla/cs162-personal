@@ -161,9 +161,13 @@ int main(unused int argc, unused char *argv[]) {
       char *filename = tokens_get_token(tokens, 0);
 
       bool redirect_out = false;
+      bool redirect_in = false;
       char *out_filename;
+      char *in_filename;
       int outfd = -1;
+      int infd = -1;
       int out_char_index = -1;
+      int in_char_index = -1;
 
       for (int i = 0; i < tokens_get_length(tokens); i++) {
         if (strcmp(">", tokens_get_token(tokens, i)) == 0) {
@@ -173,6 +177,15 @@ int main(unused int argc, unused char *argv[]) {
             out_filename = tokens_get_token(tokens, i + 1);
             outfd = open(out_filename, O_CREAT|O_WRONLY|O_TRUNC, 0644);
           }
+          break;
+        } else if (strcmp("<", tokens_get_token(tokens, i)) == 0) {
+          redirect_in = true;
+          in_char_index = i;
+          if (i < tokens_get_length(tokens) - 1) {
+            in_filename = tokens_get_token(tokens, i + 1);
+            infd = open(in_filename, O_RDONLY);
+          }
+          break;
         }
       }
 
@@ -226,9 +239,10 @@ int main(unused int argc, unused char *argv[]) {
         
           if (redirect_out) {
             argc = out_char_index;
+          } else if (redirect_in) {
+            argc = in_char_index;
           } else {
             argc = tokens_get_length(tokens);
-            
           }
 
           char *argv[argc + 1];
@@ -239,13 +253,22 @@ int main(unused int argc, unused char *argv[]) {
           
           argv[argc] = (char *) NULL;
 
+          /* Shell only supports one > or < at a time */
           if (redirect_out) {
             /* Replace stdout */
             if (!outfd) {
               printf("Error opening output file: %s\n", out_filename);
             } else {
-              dup2(outfd, 1); 
+              dup2(outfd, STDOUT_FILENO); 
               close(outfd);
+            }
+          } else if (redirect_in) {
+            /* Replace stdin */
+            if (!infd) {
+              printf("Error opening input file: %s\n", in_filename);
+            } else {
+              dup2(outfd, STDIN_FILENO); 
+              close(infd);
             }
           }
 
