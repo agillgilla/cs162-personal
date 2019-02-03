@@ -135,6 +135,14 @@ void init_shell() {
     /* Save the current termios to a variable, so it can be restored later. */
     tcgetattr(shell_terminal, &shell_tmodes);
   }
+  signal(SIGINT, SIG_IGN);
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGKILL, SIG_IGN);
+  signal(SIGTERM, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
+  signal(SIGCONT, SIG_IGN);
+  signal(SIGTTIN, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
 }
 
 int main(unused int argc, unused char *argv[]) {
@@ -233,7 +241,15 @@ int main(unused int argc, unused char *argv[]) {
       } else {
         /* Spawn a child to run the program */
         pid_t pid = fork();
-        if (pid == 0) { /* child process */
+
+        if (pid == 0) { /* Child process */
+
+          /* Set pgid to child pid */
+          setpgrp();
+          /* Move this child process to the foreground */
+          tcsetpgrp(STDIN_FILENO, getpid());
+          
+          printf("Child pgid: %ld\n", (long) getpgid(getpid()));
 
           size_t argc;
         
@@ -272,10 +288,21 @@ int main(unused int argc, unused char *argv[]) {
             }
           }
 
+          signal(SIGINT, SIG_DFL);
+          signal(SIGQUIT, SIG_DFL);
+          signal(SIGKILL, SIG_DFL);
+          signal(SIGTERM, SIG_DFL);
+          signal(SIGTSTP, SIG_DFL);
+          signal(SIGTSTP, SIG_DFL);
+          signal(SIGCONT, SIG_DFL);
+          signal(SIGTTIN, SIG_DFL);
+          signal(SIGTTOU, SIG_DFL);
+
           execv(full_file_path, argv);
           /* If execv fails it will get here */
 
         } else if (pid < 0) {
+          /* Error on fork() */
           printf("Error on creating new process: %s\n", full_file_path);
           if (outfd) {
             close(outfd);
@@ -283,7 +310,8 @@ int main(unused int argc, unused char *argv[]) {
           if (infd) {
             close(infd);
           }
-        } else { /* parent process */
+        } else { /* Parent process */
+          printf("Parent pgid: %ld\n", (long) getpgid(getpid()));
           if (outfd) {
             close(outfd);
           }
@@ -291,6 +319,8 @@ int main(unused int argc, unused char *argv[]) {
             close(infd);
           }
           waitpid(pid, 0, 0); /* wait for child to exit */
+
+          tcsetpgrp(shell_terminal, shell_pgid);
         }
       }      
     }
