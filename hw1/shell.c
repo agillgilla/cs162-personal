@@ -35,6 +35,7 @@ int cmd_exit(struct tokens *tokens);
 int cmd_help(struct tokens *tokens);
 int cmd_pwd(struct tokens *tokens);
 int cmd_cd(struct tokens *tokens);
+int cmd_wait(struct tokens *tokens);
 
 /* Built-in command functions take token array (see parse.h) and return int */
 typedef int cmd_fun_t(struct tokens *tokens);
@@ -51,6 +52,7 @@ fun_desc_t cmd_table[] = {
   {cmd_exit, "exit", "exit the command shell"},
   {cmd_pwd, "pwd", "print the current working directory"},
   {cmd_cd, "cd", "change the current working directory"},
+  {cmd_wait, "wait", "wait on all background child processes to return"},
 };
 
 /* Prints a helpful description for the given command */
@@ -101,6 +103,17 @@ int cmd_cd(struct tokens *tokens) {
     chdir(homedir);
     return 0;
   }
+}
+
+/* Waits for all background child processes to return */
+int cmd_wait(struct tokens *tokens) {
+  int status;
+  pid_t childid;
+  while ((childid = waitpid(-1, &status, 0)) > 0) {
+    /* This loop will terminate when all children return */
+  }
+
+  return 0;
 }
 
 /* Looks up the built-in command, if it exists. */
@@ -165,6 +178,12 @@ int main(unused int argc, unused char *argv[]) {
     if (fundex >= 0) {
       cmd_table[fundex].fun(tokens);
     } else {
+
+      bool run_bg = false;
+      /* Check if the process will run in background */
+      if (strcmp("&", tokens_get_token(tokens, tokens_get_length(tokens) - 1)) == 0) {
+        run_bg = true;
+      }
       
       char *filename = tokens_get_token(tokens, 0);
 
@@ -259,6 +278,11 @@ int main(unused int argc, unused char *argv[]) {
             argc = tokens_get_length(tokens);
           }
 
+          if (run_bg) {
+            /* Strip off the last token ('&') if it is running in background */
+            argc -= 1;
+          }
+
           char *argv[argc + 1];
 
           for (int i = 0; i < argc; i++) {
@@ -315,7 +339,11 @@ int main(unused int argc, unused char *argv[]) {
           if (infd) {
             close(infd);
           }
-          waitpid(pid, 0, 0); /* wait for child to exit */
+
+          if (!run_bg) {
+            /* Run the child in the foreground (wait) */
+            waitpid(pid, 0, 0); /* Wait for child to exit */
+          }          
 
           tcsetpgrp(shell_terminal, shell_pgid);
         }
