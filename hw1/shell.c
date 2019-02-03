@@ -248,8 +248,6 @@ int main(unused int argc, unused char *argv[]) {
           setpgrp();
           /* Move this child process to the foreground */
           tcsetpgrp(STDIN_FILENO, getpid());
-          
-          printf("Child pgid: %ld\n", (long) getpgid(getpid()));
 
           size_t argc;
         
@@ -311,7 +309,6 @@ int main(unused int argc, unused char *argv[]) {
             close(infd);
           }
         } else { /* Parent process */
-          printf("Parent pgid: %ld\n", (long) getpgid(getpid()));
           if (outfd) {
             close(outfd);
           }
