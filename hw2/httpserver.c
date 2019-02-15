@@ -52,7 +52,176 @@ void handle_files_request(int fd) {
 
   struct http_request *request = http_request_parse(fd);
 
-  http_start_response(fd, 200);
+  char *filename;
+
+  if (strcmp(request->path, "/") != 0) {
+    filename = malloc(strlen(server_files_directory) + strlen(request->path) + 1);
+    if (filename == NULL) {
+      http_start_response(fd, 200);
+      http_send_header(fd, "Content-Type", "text/html");
+      http_end_headers(fd);
+      http_send_string(fd,
+          "<center>"
+          "<h1>Error allocating memory for request.</h1>"
+          "</center>");
+      return;
+    }
+    strcpy(filename, server_files_directory);
+    strcat(filename, request->path);
+  } else {
+    filename = server_files_directory;
+  }
+
+  struct stat statbuf;
+  int file_exists = stat(filename, &statbuf);
+  if (file_exists == 0) {
+    if (S_ISREG(statbuf.st_mode)) {
+      // Requested file is a regular file
+      char *buf = 0;
+      long file_length;
+      FILE *fp = fopen(filename, "rb");
+
+      if (fp) {
+        fseek(fp, 0, SEEK_END);
+        file_length = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        buf = malloc(file_length);
+        if (buf == NULL) {
+          http_start_response(fd, 200);
+          http_send_header(fd, "Content-Type", "index/html");
+          http_end_headers(fd);
+          http_send_string(fd,
+              "<center>"
+              "<h1>Error allocating memory for request.</h1>"
+              "</center>");
+          return;
+        } else {
+          fread(buf, 1, file_length, fp);
+          http_start_response(fd, 200);
+          http_send_header(fd, "Content-Type", http_get_mime_type(filename));
+          http_end_headers(fd);
+          http_send_string(fd, buf);
+          return;
+        }
+        fclose(fp);
+      }
+    } else if (S_ISDIR(statbuf.st_mode)) {
+      // Requested file is a directory
+      char *index_filename = "index.html";
+      char *index_path = malloc(strlen(filename) + strlen(index_filename) + 1);
+      strcpy(index_path, filename);
+      strcat(index_path, index_filename);
+
+      /*http_start_response(fd, 200);
+      http_send_header(fd, "Content-Type", "text/html");
+      http_end_headers(fd);
+      http_send_string(fd,
+          "<center>"
+          "<h1>You requested:</h1>");
+      http_send_string(fd, index_path);
+      http_send_string(fd,
+          "</center>");
+      return;*/
+
+      struct stat statbuf_index;
+      int index_exists = stat(index_path, &statbuf_index);
+
+      if (index_exists == 0) {
+        // An index.html exists in the requested directory, serve it
+        char *buf = 0;
+        long file_length;
+        FILE *fp = fopen(index_path, "rb");
+
+        if (fp) {
+          fseek(fp, 0, SEEK_END);
+          file_length = ftell(fp);
+          fseek(fp, 0, SEEK_SET);
+          buf = malloc(file_length);
+          if (buf == NULL) {
+            http_start_response(fd, 200);
+            http_send_header(fd, "Content-Type", "text/html");
+            http_end_headers(fd);
+            http_send_string(fd,
+                "<center>"
+                "<h1>Error allocating memory for request.</h1>"
+                "</center>");
+            return;
+          } else {
+            fread(buf, 1, file_length, fp);
+            http_start_response(fd, 200);
+            http_send_header(fd, "Content-Type", "text/html");
+            http_end_headers(fd);
+            http_send_string(fd, buf);
+            return;
+          }
+          fclose(fp);
+        }
+      } else {
+        // There is no index.html in the requested directory, list the files inside it
+        DIR *dir;
+        struct dirent *ent;
+        if ((dir = opendir(filename)) != NULL) {
+          // Send HTTP headers
+          http_start_response(fd, 200);
+          http_send_header(fd, "Content-Type", "text/html");
+          http_end_headers(fd);
+
+          // Get all files inside the directory and print links
+          while ((ent = readdir(dir)) != NULL) {
+            // Don't print current (.) and parent (..) directory links
+            if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
+              http_send_string(fd, "<a href=\"");
+              http_send_string(fd, ent->d_name);
+              http_send_string(fd, "\">");
+              http_send_string(fd, ent->d_name);
+              http_send_string(fd, "</a><br>");
+            }
+          }
+          closedir(dir);
+
+          http_send_string(fd, "<a href=\"../\">Parent directory</a>");
+        } else {
+          
+          http_send_string(fd,
+              "<center>"
+              "<h1>Error opening directory.</h1>"
+              "</center>");
+          return;
+        }
+      }
+    } else {
+      // Not a file or a directory, error
+      http_start_response(fd, 404);
+      http_send_header(fd, "Content-type", "text/html");
+      http_send_header(fd, "Server", "httpserver/1.0");
+      http_end_headers(fd);
+      http_send_string(fd, 
+                "<center>"
+                "<h1>Error finding resource: ");
+      http_send_string(fd, filename);
+      http_send_string(fd,
+                ". Not a file or directory</h1>"
+                "</center>");
+      return;
+    }
+  } else {
+    // File doesn't exist
+    http_start_response(fd, 404);
+    http_send_header(fd, "Content-type", "text/html");
+    http_send_header(fd, "Server", "httpserver/1.0");
+    http_end_headers(fd);
+    http_send_string(fd, 
+              "<center>"
+              "<h1>Error finding file: ");
+    http_send_string(fd, filename);
+    http_send_string(fd,
+              ". File doesn't exist</h1>"
+              "</center>");
+    return;
+  }
+          
+
+  /*http_start_response(fd, 200);
   http_send_header(fd, "Content-Type", "text/html");
   http_end_headers(fd);
   http_send_string(fd,
@@ -60,7 +229,7 @@ void handle_files_request(int fd) {
       "<h1>Welcome to httpserver!</h1>"
       "<hr>"
       "<p>Nothing's here yet.</p>"
-      "</center>");
+      "</center>");*/
 }
 
 
