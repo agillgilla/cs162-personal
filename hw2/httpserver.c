@@ -149,7 +149,8 @@ void handle_files_request(int fd) {
           const char *extension = &filename[filename_len - 4];
           size_t len;
           if (strcmp(extension, ".bin") == 0) {
-            len = fread(buf, sizeof(int), file_length, fp);
+            fread(buf, sizeof(int), file_length, fp);
+            len = (size_t) file_length;
           } else {
             len = fread(buf, 1, file_length, fp);
           }
