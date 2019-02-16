@@ -93,6 +93,10 @@ void handle_files_request(int fd) {
 
   char *filename;
 
+  if (request->path == NULL) {
+    printf("%s\n", "IT'S NULL!");
+  }
+
   if (strcmp(request->path, "/") != 0) {
     filename = malloc(strlen(server_files_directory) + strlen(request->path) + 1);
     if (filename == NULL) {
@@ -137,8 +141,19 @@ void handle_files_request(int fd) {
               "</center>");
           return;
         } else {
+
+
           char lenBuf[256];
-          size_t len = fread(buf, 1, file_length, fp);
+
+          int filename_len = strlen(filename);
+          const char *extension = &filename[filename_len - 4];
+          size_t len;
+          if (strcmp(extension, ".bin") == 0) {
+            len = fread(buf, sizeof(int), file_length, fp);
+          } else {
+            len = fread(buf, 1, file_length, fp);
+          }
+
           snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
           
           http_start_response(fd, 200);
