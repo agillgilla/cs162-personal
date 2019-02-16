@@ -93,16 +93,11 @@ void handle_files_request(int fd) {
 
   char *filename;
 
-  if (request->path == NULL) {
-    printf("%s\n", "IT'S NULL!");
-  }
-
   if (strcmp(request->path, "/") != 0) {
     filename = malloc(strlen(server_files_directory) + strlen(request->path) + 1);
     if (filename == NULL) {
       http_start_response(fd, 200);
       http_send_header(fd, "Content-Type", "text/html");
-      http_send_header(fd, "Server", "httpserver/1.0");
       http_end_headers(fd);
       http_send_string(fd,
           "<center>"
@@ -133,7 +128,6 @@ void handle_files_request(int fd) {
         if (buf == NULL) {
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", "text/html");
-          http_send_header(fd, "Server", "httpserver/1.0");
           http_end_headers(fd);
           http_send_string(fd,
               "<center>"
@@ -148,7 +142,6 @@ void handle_files_request(int fd) {
           
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", http_get_mime_type(filename));
-          http_send_header(fd, "Server", "httpserver/1.0");
           http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
           http_send_string(fd, buf);
@@ -187,7 +180,6 @@ void handle_files_request(int fd) {
 
             http_start_response(fd, 200);
             http_send_header(fd, "Content-Type", "text/html");
-            http_send_header(fd, "Server", "httpserver/1.0");
             http_send_header(fd, "Content-Length", lenBuf);
             http_end_headers(fd);
             http_send_string(fd, response);
@@ -198,7 +190,6 @@ void handle_files_request(int fd) {
 
             http_start_response(fd, 200);
             http_send_header(fd, "Content-Type", "text/html");
-            http_send_header(fd, "Server", "httpserver/1.0");
             http_send_header(fd, "Content-Length", lenBuf);
             http_end_headers(fd);
             http_send_string(fd, buf);
@@ -213,7 +204,6 @@ void handle_files_request(int fd) {
 
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", "text/html");
-          http_send_header(fd, "Server", "httpserver/1.0");
           http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
           
@@ -228,7 +218,6 @@ void handle_files_request(int fd) {
           // Send HTTP headers
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", "text/html");
-          http_send_header(fd, "Server", "httpserver/1.0");
           http_end_headers(fd);
 
           // Get all files inside the directory and print links
@@ -249,7 +238,6 @@ void handle_files_request(int fd) {
         } else {
           http_start_response(fd, 404);
           http_send_header(fd, "Content-Type", "text/html");
-          http_send_header(fd, "Server", "httpserver/1.0");
           http_end_headers(fd);
           http_send_string(fd,
               "<center>"
@@ -262,7 +250,6 @@ void handle_files_request(int fd) {
       // Not a file or a directory, error
       http_start_response(fd, 404);
       http_send_header(fd, "Content-type", "text/html");
-      http_send_header(fd, "Server", "httpserver/1.0");
       http_end_headers(fd);
       http_send_string(fd, 
                 "<center>"
@@ -277,7 +264,6 @@ void handle_files_request(int fd) {
     // File doesn't exist
     http_start_response(fd, 404);
     http_send_header(fd, "Content-type", "text/html");
-    http_send_header(fd, "Server", "httpserver/1.0");
     http_end_headers(fd);
     http_send_string(fd, 
               "<center>"
