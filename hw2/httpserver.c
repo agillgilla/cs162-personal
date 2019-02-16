@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +31,44 @@ int server_port;
 char *server_files_directory;
 char *server_proxy_hostname;
 int server_proxy_port;
+
+
+/*
+ * Helper function that concatenates an arbitrary number of char arrays and
+ * returns the resulting array and sets the size_t length to the result length.
+ */
+char *super_strcat(size_t *length, int numStrs, ...) {
+  va_list valist;
+  
+  size_t result_len = 0;
+
+  // Init valist
+  va_start(valist, numStrs);
+
+  // Iterate through char* args
+  for (int i = 0; i < numStrs; i++) {
+    char *curStr = va_arg(valist, char*);
+    result_len += strlen(curStr);
+  }
+
+  // De-allocate memory
+  va_end(valist);
+
+  char *result = malloc(result_len + 1);
+
+  va_start(valist, numStrs);
+
+  strcpy(result, va_arg(valist, char*));
+
+  for (int i = 1; i < numStrs; i++) {
+    char *curStr = va_arg(valist, char*);
+    strcat(result, curStr);
+  }
+
+  *length = result_len + 1;
+
+  return result;
+}
 
 
 /*
@@ -96,9 +135,13 @@ void handle_files_request(int fd) {
               "</center>");
           return;
         } else {
-          fread(buf, 1, file_length, fp);
+          char lenBuf[256];
+          size_t len = fread(buf, 1, file_length, fp);
+          snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+          
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", http_get_mime_type(filename));
+          http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
           http_send_string(fd, buf);
           return;
@@ -111,17 +154,6 @@ void handle_files_request(int fd) {
       char *index_path = malloc(strlen(filename) + strlen(index_filename) + 1);
       strcpy(index_path, filename);
       strcat(index_path, index_filename);
-
-      /*http_start_response(fd, 200);
-      http_send_header(fd, "Content-Type", "text/html");
-      http_end_headers(fd);
-      http_send_string(fd,
-          "<center>"
-          "<h1>You requested:</h1>");
-      http_send_string(fd, index_path);
-      http_send_string(fd,
-          "</center>");
-      return;*/
 
       struct stat statbuf_index;
       int index_exists = stat(index_path, &statbuf_index);
@@ -145,16 +177,33 @@ void handle_files_request(int fd) {
                 "<center>"
                 "<h1>Error allocating memory for request.</h1>"
                 "</center>");
-            return;
           } else {
-            fread(buf, 1, file_length, fp);
+            char lenBuf[256];
+            size_t len = fread(buf, 1, file_length, fp);
+            snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+
             http_start_response(fd, 200);
             http_send_header(fd, "Content-Type", "text/html");
+            http_send_header(fd, "Content-Length", lenBuf);
             http_end_headers(fd);
             http_send_string(fd, buf);
-            return;
+
           }
           fclose(fp);
+          return;
+        } else {
+          char lenBuf[256];
+          size_t len;
+          char *response = super_strcat(&len, 1, "<h1>Unable to open file.</h1>");
+          snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+
+          http_start_response(fd, 200);
+          http_send_header(fd, "Content-Type", "text/html");
+          http_send_header(fd, "Content-Length", lenBuf);
+          http_end_headers(fd);
+          
+          http_send_string(fd, response);
+          return;
         }
       } else {
         // There is no index.html in the requested directory, list the files inside it
@@ -181,7 +230,9 @@ void handle_files_request(int fd) {
 
           http_send_string(fd, "<a href=\"../\">Parent directory</a>");
         } else {
-          
+          http_start_response(fd, 404);
+          http_send_header(fd, "Content-Type", "text/html");
+          http_end_headers(fd);
           http_send_string(fd,
               "<center>"
               "<h1>Error opening directory.</h1>"
