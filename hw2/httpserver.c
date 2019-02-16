@@ -210,6 +210,7 @@ void handle_files_request(int fd) {
           // Send HTTP headers
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", "text/html");
+          http_send_header(fd, "Content-Length", "45");
           http_end_headers(fd);
 
           // Get all files inside the directory and print links
