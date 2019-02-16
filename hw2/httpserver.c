@@ -155,7 +155,7 @@ void handle_files_request(int fd) {
       }
     } else if (S_ISDIR(statbuf.st_mode)) {
       // Requested file is a directory
-      char *index_filename = "index.html";
+      char *index_filename = "/index.html";
       char *index_path = malloc(strlen(filename) + strlen(index_filename) + 1);
       strcpy(index_path, filename);
       strcat(index_path, index_filename);
@@ -210,7 +210,6 @@ void handle_files_request(int fd) {
           // Send HTTP headers
           http_start_response(fd, 200);
           http_send_header(fd, "Content-Type", "text/html");
-          http_send_header(fd, "Content-Length", filename);
           http_end_headers(fd);
 
           // Get all files inside the directory and print links
