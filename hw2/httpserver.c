@@ -127,7 +127,7 @@ void handle_files_request(int fd) {
         buf = malloc(file_length);
         if (buf == NULL) {
           http_start_response(fd, 200);
-          http_send_header(fd, "Content-Type", "index/html");
+          http_send_header(fd, "Content-Type", "text/html");
           http_end_headers(fd);
           http_send_string(fd,
               "<center>"
@@ -140,7 +140,7 @@ void handle_files_request(int fd) {
           snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
           
           http_start_response(fd, 200);
-          http_send_header(fd, "Content-Type", "text/html");
+          http_send_header(fd, "Content-Type", http_get_mime_type(filename));
           http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
           http_send_string(fd, buf);
@@ -170,13 +170,18 @@ void handle_files_request(int fd) {
           fseek(fp, 0, SEEK_SET);
           buf = malloc(file_length);
           if (buf == NULL) {
+            size_t len;
+            char lenBuf[256];
+            char *response = super_strcat(&len, 3, "<center>",
+                                                   "<h1>Error allocating memory for request.</h1>", 
+                                                   "</center>");
+            snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+
             http_start_response(fd, 200);
             http_send_header(fd, "Content-Type", "text/html");
+            http_send_header(fd, "Content-Length", lenBuf);
             http_end_headers(fd);
-            http_send_string(fd,
-                "<center>"
-                "<h1>Error allocating memory for request.</h1>"
-                "</center>");
+            http_send_string(fd, response);
           } else {
             char lenBuf[256];
             size_t len = fread(buf, 1, file_length, fp);
@@ -187,7 +192,6 @@ void handle_files_request(int fd) {
             http_send_header(fd, "Content-Length", lenBuf);
             http_end_headers(fd);
             http_send_string(fd, buf);
-
           }
           fclose(fp);
           return;
