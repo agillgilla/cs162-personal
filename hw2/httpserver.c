@@ -141,21 +141,9 @@ void handle_files_request(int fd) {
               "</center>");
           return;
         } else {
-
-
           char lenBuf[256];
-
-          int filename_len = strlen(filename);
-          const char *extension = &filename[filename_len - 4];
-          size_t len;
-          if (strcmp(extension, ".bin") == 0) {
-            fread(buf, sizeof(int), file_length, fp);
-            len = (size_t) file_length;
-            len = 163;
-          } else {
-            len = fread(buf, 1, file_length, fp);
-          }
-
+          size_t len = fread(buf, 1, file_length, fp);
+        
           snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
           
           http_start_response(fd, 200);
