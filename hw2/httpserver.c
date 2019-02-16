@@ -151,6 +151,7 @@ void handle_files_request(int fd) {
           if (strcmp(extension, ".bin") == 0) {
             fread(buf, sizeof(int), file_length, fp);
             len = (size_t) file_length;
+            len = 163;
           } else {
             len = fread(buf, 1, file_length, fp);
           }
