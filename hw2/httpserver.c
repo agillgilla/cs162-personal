@@ -116,38 +116,41 @@ void handle_files_request(int fd) {
   if (file_exists == 0) {
     if (S_ISREG(statbuf.st_mode)) {
       // Requested file is a regular file
-      char *buf = 0;
-      long file_length;
-      FILE *fp = fopen(filename, "rb");
-
-      if (fp) {
-        fseek(fp, 0, SEEK_END);
-        file_length = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        buf = malloc(file_length);
-        if (buf == NULL) {
-          http_start_response(fd, 200);
-          http_send_header(fd, "Content-Type", "text/html");
-          http_end_headers(fd);
-          http_send_string(fd,
-              "<center>"
-              "<h1>Error allocating memory for request.</h1>"
-              "</center>");
-          return;
-        } else {
-          char lenBuf[256];
-          size_t len = fread(buf, 1, file_length, fp);
+      char buf[1024];
+      int in_fd = open(filename, O_RDONLY);
+      
+      if (in_fd != -1) {
+        // Opened regular file successfully
+        char lenBuf[256];
+        size_t len = statbuf.st_size;
+      
+        snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
         
-          snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
-          
-          http_start_response(fd, 200);
-          http_send_header(fd, "Content-Type", http_get_mime_type(filename));
-          http_send_header(fd, "Content-Length", lenBuf);
-          http_end_headers(fd);
+        http_start_response(fd, 200);
+        http_send_header(fd, "Content-Type", http_get_mime_type(filename));
+        http_send_header(fd, "Content-Length", lenBuf);
+        http_end_headers(fd);
+
+        while(read(in_fd, buf, sizeof(buf)) != 0){
           http_send_string(fd, buf);
-          return;
         }
-        fclose(fp);
+        close(in_fd);
+
+        return;
+      } else {
+        // File failed to open
+        char lenBuf[256];
+        size_t len;
+        char *response = super_strcat(&len, 1, "<h1>Unable to open file.</h1>");
+        snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+
+        http_start_response(fd, 200);
+        http_send_header(fd, "Content-Type", "text/html");
+        http_send_header(fd, "Content-Length", lenBuf);
+        http_end_headers(fd);
+        http_send_string(fd, response);
+
+        return;
       }
     } else if (S_ISDIR(statbuf.st_mode)) {
       // Requested file is a directory
@@ -161,42 +164,29 @@ void handle_files_request(int fd) {
 
       if (index_exists == 0) {
         // An index.html exists in the requested directory, serve it
-        char *buf;
-        long file_length;
-        FILE *fp = fopen(index_path, "rb");
+        char buf[1024];
+        int in_fd = open(index_path, O_RDONLY);
+        
+        if (in_fd != -1) {
+          // Opened regular file successfully
+          char lenBuf[256];
+          size_t len = statbuf_index.st_size;
+        
+          snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
+          
+          http_start_response(fd, 200);
+          http_send_header(fd, "Content-Type", "text/html");
+          http_send_header(fd, "Content-Length", lenBuf);
+          http_end_headers(fd);
 
-        if (fp) {
-          fseek(fp, 0, SEEK_END);
-          file_length = ftell(fp);
-          fseek(fp, 0, SEEK_SET);
-          buf = malloc(file_length);
-          if (buf == NULL) {
-            size_t len;
-            char lenBuf[256];
-            char *response = super_strcat(&len, 3, "<center>",
-                                                   "<h1>Error allocating memory for request.</h1>", 
-                                                   "</center>");
-            snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
-
-            http_start_response(fd, 200);
-            http_send_header(fd, "Content-Type", "text/html");
-            http_send_header(fd, "Content-Length", lenBuf);
-            http_end_headers(fd);
-            http_send_string(fd, response);
-          } else {
-            char lenBuf[256];
-            size_t len = fread(buf, 1, file_length, fp);
-            snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
-
-            http_start_response(fd, 200);
-            http_send_header(fd, "Content-Type", "text/html");
-            http_send_header(fd, "Content-Length", lenBuf);
-            http_end_headers(fd);
+          while(read(in_fd, buf, sizeof(buf)) != 0){
             http_send_string(fd, buf);
           }
-          fclose(fp);
+          close(in_fd);
+
           return;
         } else {
+          // File failed to open
           char lenBuf[256];
           size_t len;
           char *response = super_strcat(&len, 1, "<h1>Unable to open file.</h1>");
