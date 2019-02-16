@@ -140,7 +140,7 @@ void handle_files_request(int fd) {
           snprintf(lenBuf, sizeof(lenBuf), "%zu", len);
           
           http_start_response(fd, 200);
-          http_send_header(fd, "Content-Type", http_get_mime_type(filename));
+          http_send_header(fd, "Content-Type", "text/html");
           http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
           http_send_string(fd, buf);
@@ -160,7 +160,7 @@ void handle_files_request(int fd) {
 
       if (index_exists == 0) {
         // An index.html exists in the requested directory, serve it
-        char *buf = 0;
+        char *buf;
         long file_length;
         FILE *fp = fopen(index_path, "rb");
 
@@ -229,6 +229,7 @@ void handle_files_request(int fd) {
           closedir(dir);
 
           http_send_string(fd, "<a href=\"../\">Parent directory</a>");
+          return;
         } else {
           http_start_response(fd, 404);
           http_send_header(fd, "Content-Type", "text/html");
