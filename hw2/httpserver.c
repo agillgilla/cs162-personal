@@ -131,8 +131,9 @@ void handle_files_request(int fd) {
         http_send_header(fd, "Content-Length", lenBuf);
         http_end_headers(fd);
 
-        while(read(in_fd, buf, sizeof(buf)) != 0){
-          http_send_string(fd, buf);
+        size_t read_len;
+        while ((read_len = read(in_fd, buf, sizeof(buf))) != 0){
+          http_send_data(fd, buf, read_len);
         }
         close(in_fd);
 
@@ -179,8 +180,9 @@ void handle_files_request(int fd) {
           http_send_header(fd, "Content-Length", lenBuf);
           http_end_headers(fd);
 
-          while(read(in_fd, buf, sizeof(buf)) != 0){
-            http_send_string(fd, buf);
+          size_t read_len;
+          while ((read_len = read(in_fd, buf, sizeof(buf))) != 0){
+            http_send_data(fd, buf, read_len);
           }
           close(in_fd);
 
