@@ -290,15 +290,27 @@ void *echo_socket_data(void *tunnel) {
   int in_fd = my_tunnel->in_fd;
   int out_fd = my_tunnel->out_fd;
 
-  char buf[1024];
-  int in_len;
+  char *buf = calloc(1, sizeof(char) * 1024);
+  size_t in_len;
   while ((in_len = recv(in_fd, buf, 1024, 0))) {
-    int out_len = send(out_fd, buf, 1024, 0);
-    if (out_len == -1) {
-      close(in_fd);
-      return NULL;
+    
+    char *sendBuf = buf;
+    size_t remain_data = in_len;
+    // Loop to make sure we send all the read data
+    while (remain_data > 0) {
+      int sent_data = send(out_fd, sendBuf, in_len, 0);
+
+      if (sent_data < 1) {
+        close(in_fd);
+        return NULL;
+      }
+
+      sendBuf += sent_data;
+      remain_data -= sent_data;
     }
+    buf -= remain_data;
   }
+
   if (in_len == -1) {
     close(out_fd);
   }
