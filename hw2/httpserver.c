@@ -391,6 +391,9 @@ void handle_proxy_request(int fd) {
 
   pthread_create(&thread_1, NULL, echo_socket_data, tunnel_1);
   pthread_create(&thread_2, NULL, echo_socket_data, tunnel_2);
+
+  pthread_join(thread_1, NULL);
+  pthread_join(thread_2, NULL);
 }
 
 typedef void (*callback)(int);
