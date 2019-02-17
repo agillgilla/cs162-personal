@@ -26,7 +26,7 @@
  * command line arguments (already implemented for you).
  */
 wq_t work_queue;
-int num_threads;
+int num_threads = -1;
 int server_port;
 char *server_files_directory;
 char *server_proxy_hostname;
@@ -368,9 +368,10 @@ void *thread_func(void *request_handler) {
 
 
 void init_thread_pool(int num_threads, void (*request_handler)(int)) {
+  if (num_threads == -1) {
+    return;
+  }
   wq_init(&work_queue);
-
-  
 
   pthread_t threads[num_threads];
   // Loop to create num_threads threads
@@ -440,7 +441,13 @@ void serve_forever(int *socket_number, void (*request_handler)(int)) {
         client_address.sin_port);
 
     // TODO: Change me?
-    wq_push(&work_queue, client_socket_number);
+    if (num_threads == -1) {
+      request_handler(client_socket_number);
+      close(client_socket_number);
+    } else if (num_threads > 0) {
+      wq_push(&work_queue, client_socket_number);
+    }
+      
 
     /*
     request_handler(client_socket_number);
