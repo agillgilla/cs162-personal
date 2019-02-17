@@ -339,11 +339,47 @@ void handle_proxy_request(int fd) {
   */
 }
 
+typedef void (*callback)(int);
+
+typedef struct threadargs
+{
+    callback request_handler;
+} threadargs;
+
+void *thread_func(void *request_handler) {
+  
+  threadargs *ta = request_handler;
+
+  while (1) {
+    //pthread_t tid = pthread_self();
+    //printf("Thread ID: %d - Blocked on wq_pop\n", (int) tid);
+    // wq_pop blocks on no work objects in queue
+    int client_fd = wq_pop(&work_queue);
+
+    //printf("Thread ID: %d - I am FREE!\n", (int) tid);
+    // Handle the request on the returned client socket
+    ta->request_handler(client_fd);
+
+    close(client_fd);
+  }
+  return NULL;
+}
+
+
 
 void init_thread_pool(int num_threads, void (*request_handler)(int)) {
-  /*
-   * TODO: Part of your solution for Task 2 goes here!
-   */
+  wq_init(&work_queue);
+
+  
+
+  pthread_t threads[num_threads];
+  // Loop to create num_threads threads
+  for (int i = 0; i < num_threads; i++) {
+    threadargs *ta = (threadargs*) malloc(sizeof(threadargs));
+    ta->request_handler = request_handler;
+    //pthread_t curr_thread = (pthread_t) malloc(sizeof(pthread_t));
+    pthread_create(&threads[i], NULL, thread_func, ta);
+  }
 }
 
 /*
@@ -404,8 +440,12 @@ void serve_forever(int *socket_number, void (*request_handler)(int)) {
         client_address.sin_port);
 
     // TODO: Change me?
+    wq_push(&work_queue, client_socket_number);
+
+    /*
     request_handler(client_socket_number);
     close(client_socket_number);
+    */
 
     printf("Accepted connection from %s on port %d\n",
         inet_ntoa(client_address.sin_addr),
