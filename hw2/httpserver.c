@@ -279,6 +279,32 @@ void handle_files_request(int fd) {
       "</center>");*/
 }
 
+typedef struct socket_tunnel
+{
+    int in_fd;
+    int out_fd;
+} socket_tunnel;
+
+void *echo_socket_data(void *tunnel) {
+  socket_tunnel *my_tunnel = tunnel;
+  int in_fd = my_tunnel->in_fd;
+  int out_fd = my_tunnel->out_fd;
+
+  char buf[1024];
+  int in_len;
+  while ((in_len = recv(in_fd, buf, 1024, 0))) {
+    int out_len = send(out_fd, buf, 1024, 0);
+    if (out_len == -1) {
+      close(in_fd);
+      return NULL;
+    }
+  }
+  if (in_len == -1) {
+    close(out_fd);
+  }
+  return NULL;
+}
+
 
 /*
  * Opens a connection to the proxy target (hostname=server_proxy_hostname and
@@ -337,6 +363,22 @@ void handle_proxy_request(int fd) {
   /* 
   * TODO: Your solution for task 3 belongs here! 
   */
+
+  //int fd is input (client connection)
+  //int client_socket_fd is proxy server (server connection)
+  pthread_t thread_1;
+  pthread_t thread_2;
+
+  socket_tunnel *tunnel_1 = (socket_tunnel*) malloc(sizeof(socket_tunnel));
+  tunnel_1->in_fd = fd;
+  tunnel_1->out_fd = client_socket_fd;
+
+  socket_tunnel *tunnel_2 = (socket_tunnel*) malloc(sizeof(socket_tunnel));
+  tunnel_2->in_fd = client_socket_fd;
+  tunnel_2->out_fd = fd;
+
+  pthread_create(&thread_1, NULL, echo_socket_data, tunnel_1);
+  pthread_create(&thread_2, NULL, echo_socket_data, tunnel_2);
 }
 
 typedef void (*callback)(int);
@@ -447,12 +489,6 @@ void serve_forever(int *socket_number, void (*request_handler)(int)) {
     } else if (num_threads > 0) {
       wq_push(&work_queue, client_socket_number);
     }
-      
-
-    /*
-    request_handler(client_socket_number);
-    close(client_socket_number);
-    */
 
     printf("Accepted connection from %s on port %d\n",
         inet_ntoa(client_address.sin_addr),
