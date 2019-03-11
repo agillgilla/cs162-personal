@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
 
 /* First block at the bottom of the heap */
 struct mem_block *first_block = NULL;
@@ -103,6 +104,16 @@ void combine_mem_block(struct mem_block *block) {
 	}
 }
 
+/**
+ * Zero-fills the memory of a memory block and returns
+ * the memory pointer
+ */
+void *zero_fill(struct mem_block *block) {
+	memset(block->memory, 0, block->size);
+
+	return (void *) block->memory;
+}
+
 void *mm_malloc(size_t size) {
 	/* Return null if requested size is 0 */
     if (size == 0) return NULL;
@@ -115,7 +126,8 @@ void *mm_malloc(size_t size) {
 		if (new_block == NULL) {
 			return NULL;
 		}
-		return (void *) new_block->memory;
+
+		return zero_fill(new_block);
     } else {
     	struct mem_block *curr_block = first_block;
     	/* Keep iterating through list until we find an unused block with enough room */
@@ -126,14 +138,14 @@ void *mm_malloc(size_t size) {
     			/* Check if we have enough left over to split */
     			if (leftover > sizeof(struct mem_block)) {
     				/* We can split into two */
-    				return (void *) split_mem_block(curr_block, size)->memory;
+    				return zero_fill(split_mem_block(curr_block, size));
     			} else {
     				/* We can use this block, but not enough left over to split */
     				curr_block->size = size;
     				curr_block->extra = leftover;
     				curr_block->used = true;
 
-    				return (void *) curr_block->memory;
+    				return zero_fill(curr_block);
     			}
     		}
 			curr_block = curr_block->next;
@@ -147,7 +159,7 @@ void *mm_malloc(size_t size) {
 			if (new_block == NULL) {
 				return NULL;
 			}
-			return (void *) new_block->memory;
+			return zero_fill(new_block);
 		}
 
 		/* Execution should never reach here, so return NULL */
