@@ -69,6 +69,13 @@ struct mem_block *split_mem_block(struct mem_block *block, size_t size) {
 	block->used = true;
 	block->next = new_block;
 
+	if (block == last_block) {
+		/* Set the last block's next to the block we are adding */
+		block->next = new_block;
+		/* Set the last block to the block we are creating */
+		last_block = new_block;
+	}
+	
     return block;
 }
 
@@ -77,7 +84,23 @@ struct mem_block *split_mem_block(struct mem_block *block, size_t size) {
  * with the next memory block in the list
  */
 void combine_mem_block(struct mem_block *block) {
+	/* Get the block after the consuming block */
+	struct mem_block *block_to_remove = block->next;
 
+	/* Set the consuming block to the last block if the one being consumed is last */
+	if (block_to_remove == last_block) {
+		last_block = block;
+	}
+
+	/* Set the next pointer of this block to the block after the one we are removing */
+	block->next = block_to_remove->next;
+	/* Increase the size of the block that just consumed the block in front of it */
+	block->size = block->size + sizeof(struct mem_block) + block_to_remove->size;
+
+	/* Set the previous pointer of the block after the consuming block to point to the consuming block */
+	if (block->next != NULL) {
+		block->next->prev = block;
+	}
 }
 
 void *mm_malloc(size_t size) {
@@ -138,5 +161,20 @@ void *mm_realloc(void *ptr, size_t size) {
 }
 
 void mm_free(void *ptr) {
-    /* YOUR CODE HERE */
+	/* Do nothing if passed a null pointer */
+    if (ptr == NULL) return;
+
+    /* Cast the pointer to a mem_block pointer */
+    struct mem_block *block_to_free = (struct mem_block *) (ptr - sizeof(struct mem_block));
+
+    block_to_free->used = false;
+    block_to_free->size = block_to_free->size + block_to_free->extra;
+    block_to_free->extra = 0;
+
+    if (block_to_free->next != NULL && block_to_free->next->used == false) {
+    	combine_mem_block(block_to_free);
+    }
+    if (block_to_free->prev != NULL && block_to_free->prev->used == false) {
+    	combine_mem_block(block_to_free->prev);
+    }
 }
