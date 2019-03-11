@@ -109,6 +109,10 @@ void combine_mem_block(struct mem_block *block) {
  * the memory pointer
  */
 void *zero_fill(struct mem_block *block) {
+	/* Return null if the pointer is null */
+	if (block == NULL) return NULL;
+	
+	/* Set the memory to all zeroes */
 	memset(block->memory, 0, block->size);
 
 	return (void *) block->memory;
