@@ -176,8 +176,42 @@ void *mm_malloc(size_t size) {
 }
 
 void *mm_realloc(void *ptr, size_t size) {
-    /* YOUR CODE HERE */
-    return NULL;
+    if (ptr != NULL && size == 0) {
+    	/* Operate like mm_free if pointer is null and size is 0 */
+    	mm_free(ptr);
+    	return NULL;
+    } else if (ptr == NULL) {
+    	/* Operate just like mm_malloc if pointer isn't null */
+    	return mm_malloc(size);
+    } else {
+    	void *test_memory = mm_malloc(size);
+    	if (test_memory == NULL) {
+    		return NULL;
+    	}
+    	/* Free the test memory we mm_malloc'd */
+    	mm_free(test_memory);
+
+    	/* Get the mem_block to realloc */
+    	struct mem_block *block_to_realloc = (struct mem_block *) (ptr - sizeof(struct mem_block));
+
+    	/* Free the memory passed in to function */
+    	mm_free(ptr);
+
+    	/* Get the pointer to where the new block will reside */
+		void *realloc_mem = mm_malloc(size);
+
+		if (size <= block_to_realloc->size) {
+			memcpy(realloc_mem, ptr, size);
+		} else {
+			memcpy(realloc_mem, ptr, block_to_realloc->size);
+			/* Get the bytes of extra memory that we need to zero-fill */
+			size_t extra_mem = size - block_to_realloc->size;
+			/* Zero fill empty memory */
+			memset(realloc_mem + block_to_realloc->size, 0, extra_mem);
+		}
+
+		return realloc_mem;
+    }   
 }
 
 void mm_free(void *ptr) {
