@@ -35,13 +35,62 @@ void load_alloc_functions() {
     }
 }
 
+void test_large_malloc() {
+    printf("TEST: test_large_malloc\n");
+    printf("=======================\n");
+    printf("\tmalloc-ing some memory...\n");
+
+    char *data = (char *) mm_malloc(sizeof(char) * 6);
+
+    const char *name = "Arjun";
+
+    memcpy(data, name, 6);
+
+    printf("\tTrying to malloc a chunk of memory that is way too large... NULL should be returned.\n");
+
+    char *large = (char *) mm_malloc(9223372036854775807);
+
+    assert(large == NULL);
+
+    printf("\tFinally, I free the memory...\n");
+
+    mm_free(data);
+}
+
+void test_reuse_freed_memory() {
+    printf("TEST: test_reuse_freed_memory\n");
+    printf("=======================\n");
+    printf("\tmalloc-ing some memory...\n");
+
+    char *data = (char *) mm_malloc(sizeof(char) * 6);
+
+    const char *name = "Arjun";
+
+    memcpy(data, name, 6);
+
+    printf("\tFreeing the memory I just malloc-ed.\n");
+
+    mm_free(data);
+
+    printf("\tmalloc-ing some memory of the same size...\n");
+
+    char *data2 = (char *) mm_malloc(sizeof(char) * 6);
+
+    printf("\tFinally, I free the memory again...\n");
+
+    mm_free(data2);
+}
+
 int main() {
     load_alloc_functions();
 
-    int *data = (int*) mm_malloc(sizeof(int));
+    /*int *data = (int*) mm_malloc(sizeof(int));
     assert(data != NULL);
     data[0] = 0x162;
     mm_free(data);
-    printf("malloc test successful!\n");
+    printf("malloc test successful!\n");*/
+
+    test_reuse_freed_memory();
+
     return 0;
 }

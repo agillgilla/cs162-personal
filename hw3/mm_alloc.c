@@ -135,7 +135,7 @@ void *mm_malloc(size_t size) {
     } else {
     	struct mem_block *curr_block = first_block;
     	/* Keep iterating through list until we find an unused block with enough room */
-    	while (curr_block != last_block) {
+    	while (true) {
     		/* Check if we found and unused block with enough room */
     		if (curr_block->used == false && curr_block->size + curr_block->extra >= size) {
     			size_t leftover = curr_block->size + curr_block->extra - size;
@@ -151,6 +151,10 @@ void *mm_malloc(size_t size) {
 
     				return zero_fill(curr_block);
     			}
+    		} 
+
+    		if (curr_block->next == NULL) {
+    			break;
     		}
 			curr_block = curr_block->next;
 		}
