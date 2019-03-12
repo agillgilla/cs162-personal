@@ -25,8 +25,8 @@ struct mem_block *push_mem_block(size_t size) {
 	/* Get the pointer to where the new block will reside */
 	struct mem_block *new_block = (struct mem_block *) sbrk(0);
 	/* Increment the data segment using sbrk().  If error on sbrk(), return NULL */
-	if (sbrk(sizeof(struct mem_block) + size) < 0) return NULL;
-	
+	void *status = sbrk(sizeof(struct mem_block) + size);
+	if ((int) status < 0) return NULL;
 	/* Initialize new block members */
 	new_block->size = size;
 	new_block->extra = 0;
@@ -111,7 +111,7 @@ void combine_mem_block(struct mem_block *block) {
 void *zero_fill(struct mem_block *block) {
 	/* Return null if the pointer is null */
 	if (block == NULL) return NULL;
-	
+
 	/* Set the memory to all zeroes */
 	memset(block->memory, 0, block->size);
 
@@ -155,7 +155,7 @@ void *mm_malloc(size_t size) {
 			curr_block = curr_block->next;
 		}
 
-		if (curr_block == last_block || curr_block == NULL) {
+		if (curr_block == last_block) {
 			/* We need to append a new block to the list */
 	    	struct mem_block *new_block = push_mem_block(size);
 			
@@ -183,6 +183,9 @@ void mm_free(void *ptr) {
     /* Cast the pointer to a mem_block pointer */
     struct mem_block *block_to_free = (struct mem_block *) (ptr - sizeof(struct mem_block));
 
+    //printf("FREEING BLOCK WITH EXTRA: %zd\n", block_to_free->extra);
+    //printf("FREEING BLOCK WITH SIZE: %zd\n", block_to_free->size);
+
     block_to_free->used = false;
     block_to_free->size = block_to_free->size + block_to_free->extra;
     block_to_free->extra = 0;
@@ -193,4 +196,47 @@ void mm_free(void *ptr) {
     if (block_to_free->prev != NULL && block_to_free->prev->used == false) {
     	combine_mem_block(block_to_free->prev);
     }
+}
+
+void print_mem_structure() {
+	if (first_block == NULL) {
+		printf("No memory to print\n");
+		return;
+	}
+
+	struct mem_block *curr_block = first_block;
+
+	while (true) {
+		printf("Block members:\n");
+		printf("--------------\n");
+    	printf("Block size: %zd\n", curr_block->size);
+    	printf("Block extra: %zd\n", curr_block->extra);
+    	printf("Block used: %s\n", curr_block->used ? "true" : "false");
+    	if (curr_block->prev == NULL) {
+    		printf("Block prev is null\n");
+    	} else {
+    		printf("Block prev is not null\n");
+    	}
+    	if (curr_block->next == NULL) {
+    		printf("Block next is null\n");
+    	} else {
+    		printf("Block next is not null\n");
+    	}
+    	
+    	printf("Block raw memory:\n");
+    	printf("%s\n", curr_block->memory);
+    	printf("=========================\n");
+
+    	if (curr_block->next == NULL) {
+    		break;
+    	}
+    	curr_block = curr_block->next;
+	}
+
+	if (curr_block == last_block) {
+		printf("The block we ended on was the last block.  Good.\n");
+	} else {
+		printf("Oops! The block we ended on was NOT the last block.\n");
+	}
+
 }
