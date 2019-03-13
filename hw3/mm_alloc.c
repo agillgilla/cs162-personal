@@ -105,6 +105,67 @@ void combine_mem_block(struct mem_block *block) {
 }
 
 /**
+ * Utility function to mm_malloc without zeroing old data
+ * Used only in mm_realloc
+ */
+void *mm_malloc_without_zero(size_t size) {
+	/* Return null if requested size is 0 */
+    if (size == 0) return NULL;
+    
+    if (first_block == NULL) { 
+    	/* We are allocating for the first time */
+    	struct mem_block *new_block = push_mem_block(size);
+		
+    	/* Return NULL if the block creation was unsuccessful */
+		if (new_block == NULL) {
+			return NULL;
+		}
+
+		return new_block->memory;
+    } else {
+    	struct mem_block *curr_block = first_block;
+    	/* Keep iterating through list until we find an unused block with enough room */
+    	while (true) {
+    		/* Check if we found and unused block with enough room */
+    		if (curr_block->used == false && curr_block->size + curr_block->extra >= size) {
+    			size_t leftover = curr_block->size + curr_block->extra - size;
+    			/* Check if we have enough left over to split */
+    			if (leftover > sizeof(struct mem_block)) {
+    				/* We can split into two */
+    				return split_mem_block(curr_block, size)->memory;
+    			} else {
+    				/* We can use this block, but not enough left over to split */
+    				curr_block->size = size;
+    				curr_block->extra = leftover;
+    				curr_block->used = true;
+
+    				return curr_block->memory;
+    			}
+    		} 
+
+    		if (curr_block->next == NULL) {
+    			break;
+    		}
+			curr_block = curr_block->next;
+		}
+
+		if (curr_block == last_block) {
+			/* We need to append a new block to the list */
+	    	struct mem_block *new_block = push_mem_block(size);
+			
+	    	/* Return NULL if the block creation was unsuccessful */
+			if (new_block == NULL) {
+				return NULL;
+			}
+			return new_block->memory;
+		}
+
+		/* Execution should never reach here, so return NULL */
+		return NULL;
+    }
+}
+
+/**
  * Zero-fills the memory of a memory block and returns
  * the memory pointer
  */
@@ -185,29 +246,36 @@ void *mm_realloc(void *ptr, size_t size) {
     	return mm_malloc(size);
     } else {
     	void *test_memory = mm_malloc(size);
+    	/* Return null if we cannot allocate the specified amount */
     	if (test_memory == NULL) {
     		return NULL;
     	}
+
     	/* Free the test memory we mm_malloc'd */
     	mm_free(test_memory);
 
     	/* Get the mem_block to realloc */
     	struct mem_block *block_to_realloc = (struct mem_block *) (ptr - sizeof(struct mem_block));
 
+    	/* Get the old size of the block to realloc */
+    	size_t old_size = block_to_realloc->size;
+
     	/* Free the memory passed in to function */
     	mm_free(ptr);
 
     	/* Get the pointer to where the new block will reside */
-		void *realloc_mem = mm_malloc(size);
+		void *realloc_mem = mm_malloc_without_zero(size);
 
-		if (size <= block_to_realloc->size) {
+		if (size <= old_size) {
+			/* Copy in the old memory */
 			memcpy(realloc_mem, ptr, size);
 		} else {
-			memcpy(realloc_mem, ptr, block_to_realloc->size);
+			/* Copy in the old memory */
+			memcpy(realloc_mem, ptr, old_size);
 			/* Get the bytes of extra memory that we need to zero-fill */
-			size_t extra_mem = size - block_to_realloc->size;
+			size_t extra_mem = size - old_size;
 			/* Zero fill empty memory */
-			memset(realloc_mem + block_to_realloc->size, 0, extra_mem);
+			memset(realloc_mem + old_size, 0, extra_mem);
 		}
 
 		return realloc_mem;
@@ -220,9 +288,6 @@ void mm_free(void *ptr) {
 
     /* Cast the pointer to a mem_block pointer */
     struct mem_block *block_to_free = (struct mem_block *) (ptr - sizeof(struct mem_block));
-
-    //printf("FREEING BLOCK WITH EXTRA: %zd\n", block_to_free->extra);
-    //printf("FREEING BLOCK WITH SIZE: %zd\n", block_to_free->size);
 
     block_to_free->used = false;
     block_to_free->size = block_to_free->size + block_to_free->extra;

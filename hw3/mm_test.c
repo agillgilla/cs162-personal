@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Function pointers to hw3 functions */
 void* (*mm_malloc)(size_t);
@@ -81,6 +82,40 @@ void test_reuse_freed_memory() {
     mm_free(data2);
 }
 
+void test_realloc_bigger() {
+    printf("TEST: test_reuse_freed_memory\n");
+    printf("=======================\n");
+    printf("\tmalloc-ing some memory...\n");
+
+    char *data = (char *) mm_malloc(sizeof(char) * 6);
+
+    const char *name = "Arjun";
+
+    memcpy(data, name, 6);
+
+    printf("\tReallocing the data to a bigger array...\n");
+
+    mm_realloc(data, 20);
+
+    printf("\tThe initial values should still be there, but the newly allocated space should be 0\n");
+
+    for (int i = 0; i <= strlen(name); i++) {
+        if (name[i] != data[i]) {
+            printf("\tFAIL: I expected data[%d] to be %c, but it was %c\n", i, name[i], data[i]);
+        }
+    }
+    
+    for (int i = strlen(name) + 1; i < 20; i++) {
+        if (data[i] != 0) {
+            printf("\tFAIL: I expected data[%d] to be 0, but it was %d\n", i, data[i]);
+        }
+    }
+
+    printf("\tFinally, I free the memory...\n");
+
+    mm_free(data);
+}
+
 int main() {
     load_alloc_functions();
 
@@ -90,7 +125,7 @@ int main() {
     mm_free(data);
     printf("malloc test successful!\n");*/
 
-    test_reuse_freed_memory();
+    test_realloc_bigger();
 
     return 0;
 }
